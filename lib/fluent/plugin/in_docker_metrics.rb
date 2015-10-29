@@ -141,7 +141,7 @@ module Fluent
     end
 
     def get_interface_path(id)
-      File.mkdir("/var/run/netns") if not File.directory?("/var/run/netns")
+      Dir.mkdir("/var/run/netns") if not File.directory?("/var/run/netns")
       pid=`docker -H #{@docker_socket} inspect -f '{{.State.Pid}}' #{id}`.chomp
       log.debug "#{@docker_socket} #{id} #{pid}"
       if File.directory?("#{@proc_path}/#{pid}/ns")

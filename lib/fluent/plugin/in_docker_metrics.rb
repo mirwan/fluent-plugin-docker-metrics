@@ -148,7 +148,7 @@ module Fluent
         if not File.symlink?("/var/run/netns/#{id}")
           File.symlink("#{@proc_path}/#{pid}/ns/net","/var/run/netns/#{id}")
         end
-        log.debug "lets play: ip netns exec #{id} ip link show eth0 | head -n1 | sed s/:.*//"a
+        log.debug "lets play: ip netns exec #{id} ip link show eth0 | head -n1 | sed s/:.*//"
         index = `ip netns exec #{id} ip link show eth0 | head -n1 | sed s/:.*//`.chomp.to_i
         index = index + 1
         interface_name = `grep -E "^#{index}$" /host/sys/class/net/*/ifindex | xargs dirname | xargs basename`.chomp

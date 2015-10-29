@@ -141,13 +141,23 @@ module Fluent
     end
 
     def get_interface_path(id)
-      `test -d /var/run/netns && mkdir /var/run/netns`
-      `test -l /var/run/netns/#{id} || ln -s #{@proc_path}/$(docker -H #{@docker_socket} inspect -f '{{.State.Pid}}' #{id}) /var/run/netns/#{id}`
-      index = `ip netns exec #{id} ip link show eth0 | head -n1 | sed s/:.*//)`
-      index = index + 1
-      interface_name = `ip link show | grep "^#{index}:" | sed "s/#{index}: \(.*\):.*/\1/"`
-      
-      interface_statistics_path = "#{@docker_network_stats}/#{interface_name}/statistics"
+      `test -d /var/run/netns || mkdir /var/run/netns`
+      pid=`docker -H #{@docker_socket} inspect -f '{{.State.Pid}}' #{id}`.chomp
+      log.info "#{@docker_socket} #{id} #{pid}"
+      if File.directory?("#{@proc_path}/#{pid}/ns")
+        if not File.symlink?("/var/run/netns/#{id}")
+          `ln -s #{@proc_path}/#{pid}/ns/net /var/run/netns/#{id}`
+        end
+        log.info "lets play: ip netns exec #{id} ip link show eth0 | head -n1 | sed s/:.*//"
+        index = `ip netns exec #{id} ip link show eth0 | head -n1 | sed s/:.*//`
+        index = index + 1
+        interface_name = `ip link show | grep "^#{index}:" | sed "s/#{index}: \(.*\):.*/\1/"`
+        interface_statistics_path = "#{@docker_network_stats}/#{interface_name}/statistics"
+      else
+        log.info "#{@proc_path}/#{pid}/ns not dir or #{@proc_path}/#{pid}/ns/net not symlink"
+        interface_name = nil
+        interface_statistics_path = nil
+      end
       return interface_name, interface_statistics_path
     end
 

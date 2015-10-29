@@ -9,6 +9,7 @@ module Fluent
     config_param :docker_infos_path, :string, :default => '/var/lib/docker/execdriver/native'
     config_param :docker_network_stats, :string, :default => '/sys/class/net'
     config_param :docker_socket, :string, :default => 'unix:///var/run/docker.sock'
+    config_param :proc_path, :string, :default => '/host/proc'
 
     # Class variables
     @@network_metrics = {
@@ -140,16 +141,11 @@ module Fluent
     end
 
     def get_interface_path(id)
-      filename = "#{@docker_infos_path}/#{id}/state.json"
-      raise ConfigError if not File.exists?(filename)
-      
-      # Read JSON from file
-      json = File.read(filename)
-      parsed = JSON.parse(json)
-
-      keys = parsed.keys
-
-      interface_name =  parsed["network_state"]["veth_host"]
+      `test -d /var/run/netns && mkdir /var/run/netns`
+      `test -l /var/run/netns/#{id} || ln -s #{@proc_path}/$(docker -H #{@docker_socket} inspect -f '{{.State.Pid}}' #{id}) /var/run/netns/#{id}`
+      index = `ip netns exec #{id} ip link show eth0 | head -n1 | sed s/:.*//)`
+      index = index + 1
+      interface_name = `ip link show | grep "^#{index}:" | sed "s/#{index}: \(.*\):.*/\1/"`
       
       interface_statistics_path = "#{@docker_network_stats}/#{interface_name}/statistics"
       return interface_name, interface_statistics_path
